@@ -12,4 +12,5 @@ while true; do
     $SUDO nmap -sP -oX $WORKFILE $ADDR > /dev/null 2>&1
     $SUDO mv -f $WORKFILE $OUTFILE
     date +'%Y-%m-%d %H:%M:%S'
+    sleep 1
 done
