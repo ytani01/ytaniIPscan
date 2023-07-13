@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 #
 # Copyright (c) 2023 Yoichi Tanibayashi
 #
@@ -11,7 +11,8 @@ SUDO=sudo
 NMAP_OPTS=""
 
 while true; do
-    $SUDO nmap $NMAP_OPTS -sP -oX $WORKFILE $ADDR > /dev/null 2>&1
+    $SUDO nmap $NMAP_OPTS -sP -oX $WORKFILE $ADDR > /dev/null
+
     $SUDO mv -f $WORKFILE $OUTFILE
     date +'%Y-%m-%d %H:%M:%S'
     sleep 1

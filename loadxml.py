@@ -6,8 +6,9 @@ import xmltodict
 import time
 import datetime
 
-INTERVAL_SEC = 5 # sec
-MAX_AGE = 20
+
+INTERVAL_SEC = 10 # sec
+MAX_AGE = 10
 
 xmlfile = '/tmp/nmap-loop.sh.out'
 
