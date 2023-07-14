@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copywrite (c) 2023 Yoichi Tanibayashi
+# Copyright (c) 2023 Yoichi Tanibayashi
 #
 """
 
@@ -25,13 +25,13 @@ class ListIPsApp:
     """
     __log = get_logger(__name__, False)
 
-    OUT_FILE = '/tmp/nmap.out'
+    OUT_FILE = '/tmp/listip.out'
     WORK_FILE = OUT_FILE + '.work'
-    HTML_FILE = '/tmp/nmap.html'
+    HTML_FILE = '/tmp/listip.html'
 
     NMAP_INTERVAL = 1.0  # sec
-
     PUB_INTERVAL = 10.0  # sec
+    REFRESH_INTERVAL = 5.0  # sec
 
     MAX_AGE = 10
 
@@ -79,6 +79,9 @@ class ListIPsApp:
             for h in hostdata:
                 hostage[h] = self.MAX_AGE + 1
 
+            #
+            # IP list
+            #
             outstr = ''
             count = 0
             for h in hostage.keys():
@@ -89,23 +92,39 @@ class ListIPsApp:
                     hostage[h] = 0
                     continue
 
-                outstr += "%02d: %-15s %-18s %s (%s)\n" % (
-                    hostage[h], h[0], h[1], h[2], h[3])
-
                 count += 1
 
-            outstr = "# %s, count = %d\n" % (
-                datetime.datetime.now(), count) + outstr
-            print(outstr)
+                outstr += "%3d [%02d] %-15s %-18s %s (%s)\n" % (
+                    count, hostage[h], h[0], h[1], h[2], h[3])
 
-            outstr = '<html>\n<head>\n' \
-              + '<meta http-equiv="refresh" content="5; URL="\n' \
-              + '</head>\n<body>\n<pre>\n' \
-              + outstr \
-              + '</pre>\n</body>\n</html>\n'
+            now_str = datetime.datetime.now().strftime('%Y-%m-%d(%a) %H:%M:%S')
+            self.__log.debug('now_str=%a', now_str)
+
+#            outstr = "# %s, count = %d\n" % (
+#                datetime.datetime.now(), count) + outstr
+
+            #
+            # HTML
+            #
+            html_str = '''<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta http-equiv="refresh" content="%d">
+  </head>
+  <body>
+    <h3 style="text-align: left;">%s</h3>
+    <blockquote>
+    <h1 style="text-align: left;">%s</h1>
+    </blockquote>
+    <hr />
+    <pre>%s</pre>
+    <hr />
+  </body>
+</html>
+''' % (self.REFRESH_INTERVAL, now_str, count, outstr)
 
             with open(self.HTML_FILE, mode='w') as fp:
-                fp.write(outstr)
+                fp.write(html_str)
 
             subprocess.run(['scp', self.HTML_FILE, self._dst])
 
@@ -126,7 +145,7 @@ class ListIPsApp:
             xml_data = fp.read()
 
         dict_data = xmltodict.parse(xml_data)
-        print(dict_data)
+        self.__log.debug(dict_data)
 
         for d in dict_data['nmaprun']['host']:
             if type(d['address']) != list:
