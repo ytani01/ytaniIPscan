@@ -2,16 +2,27 @@
 #
 # Copywrite (c) 2023 Yoichi Tanibayahshi
 #
+import sys
+import subprocess
 import xmltodict
 import time
 import datetime
 
-
+DEF_DST = 'ssh.ytani.net:public_html'
 INTERVAL_SEC = 10 # sec
 MAX_AGE = 10
 
-xmlfile = '/tmp/nmap-loop.sh.out'
+print(sys.argv)
+if len(sys.argv) <= 1:
+    print('usage: %s xml_file' % (sys.argv[0]))
+    sys.exit(1)
 
+xmlfile = sys.argv[1]
+
+outfile = None
+if len(sys.argv) >= 3:
+    outfile = sys.argv[2]
+print(outfile)
 
 def load_hostdata(xmlfile:str):
     hostdata = []
@@ -58,13 +69,12 @@ def load_hostdata(xmlfile:str):
 
 hostage = {}
 while True:
-    print("----- %s" % (datetime.datetime.now()))
-
     hostdata = load_hostdata(xmlfile)
 
     for h in hostdata:
         hostage[h] = MAX_AGE + 1
 
+    outstr = ''
     count = 0
     for h in hostage.keys():
 
@@ -74,11 +84,23 @@ while True:
             hostage[h] = 0
             continue
 
-        print("%02d: %-15s %-18s %s (%s)" % (hostage[h],
-                                        h[0], h[1], h[2], h[3]))
+        outstr += "%02d: %-15s %-18s %s (%s)\n" % (hostage[h], h[0], h[1], h[2], h[3])
+
         count += 1
 
-    print("----- %s,  count = %d" %
-          (datetime.datetime.now(), count))
+    outstr = "----- %s count = %d\n" % (datetime.datetime.now(), count) + outstr
+    print(outstr)
+
+    if outfile is not None:
+        outstr = '<html>\n<head>\n' \
+        + '<meta http-equiv="refresh" content="2; URL="\n' \
+        + '</head>\n<body>\n<pre>\n' \
+        + outstr \
+        + '</pre>\n</body>\n</html>\n'
+
+        with open(outfile, mode='w') as fp_out:
+            fp_out.write(outstr)
+
+        subprocess.run(['scp', outfile, DEF_DST])
 
     time.sleep(INTERVAL_SEC)
