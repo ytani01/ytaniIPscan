@@ -1,23 +1,10 @@
 #!/usr/bin/env python3
 #
-# (c) 2023 Yoichi Tanibayashi
+# Copywrite (c) 2023 Yoichi Tanibayashi
 #
 """
-Python3 template
-
-### for detail and simple usage ###
-
-$ python3 -m pydoc TemplateA.ClassA
-
-
-### sample program ###
-
-$ ./TemplateA.py -h
 
 """
-__author__ = 'Yoichi Tanibayashi'
-__date__   = '2023'
-
 import time
 import datetime
 import threading
@@ -26,79 +13,8 @@ import xmltodict
 from my_logger import get_logger
 
 
-class ListIPs:
-    """
-    Description
-    -----------
-
-    Simple Usage
-    ============
-    ## Import
-
-    from TemplateA import ClassA
-
-    ## Initialize
-
-    obj = ClassA()
-
-
-    ## method1
-
-    obj.method1(arg)
-
-
-    ## End of program
-
-    obj.end()
-
-    ============
-
-    Attributes
-    ----------
-    attr1: type(int|str|list of str ..)
-        description
-    """
-    __log = get_logger(__name__, False)
-
-    def __init__(self, opt, debug=False):
-        """ Constructor
-
-        Parameters
-        ----------
-        opt: type
-            description
-        """
-        self._dbg = debug
-        __class__.__log = get_logger(__class__.__name__, self._dbg)
-        self.__log.debug('opt=%s', opt)
-
-        self._opt = opt
-
-    def end(self):
-        """
-        Call at the end of program
-        """
-        self.__log.debug('doing ..')
-        print('end of %s' % __class__.__name__)
-        self.__log.debug('done')
-
-    def method1(self, arg):
-        """
-        Description
-
-        Parameters
-        ----------
-        arg: str
-            description
-        """
-        self.__log.debug('arg=%s', arg)
-
-        print('%s:%s' % (arg, self._opt))
-
-        self.__log.debug('done')
-
-
-# --- 以下、サンプル ---
+__author__ = 'Yoichi Tanibayashi'
+__date__   = '2023'
 
 
 class ListIPsApp:
@@ -154,6 +70,7 @@ class ListIPsApp:
 
         hostage = {}
 
+        time.sleep(self.PUB_INTERVAL)
         while True:
             time.sleep(self.PUB_INTERVAL)
 
@@ -177,12 +94,12 @@ class ListIPsApp:
 
                 count += 1
 
-            outstr = "----- %s count = %d\n" % (
+            outstr = "# %s, count = %d\n" % (
                 datetime.datetime.now(), count) + outstr
             print(outstr)
 
             outstr = '<html>\n<head>\n' \
-              + '<meta http-equiv="refresh" content="2; URL="\n' \
+              + '<meta http-equiv="refresh" content="5; URL="\n' \
               + '</head>\n<body>\n<pre>\n' \
               + outstr \
               + '</pre>\n</body>\n</html>\n'
