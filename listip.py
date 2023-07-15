@@ -8,13 +8,15 @@
 import time
 import datetime
 import threading
+import click
 import subprocess
+import csv
 import xmltodict
 from my_logger import get_logger
 
 
 __author__ = 'Yoichi Tanibayashi'
-__date__   = '2023'
+__date__ = '2023'
 
 
 class ListIPsApp:
@@ -28,14 +30,15 @@ class ListIPsApp:
     OUT_FILE = '/tmp/listip.out'
     WORK_FILE = OUT_FILE + '.work'
     HTML_FILE = '/tmp/listip.html'
+    INFO_FILE = '/home/ytani/etc/info.csv'
 
-    NMAP_INTERVAL = 1.0  # sec
+    NMAP_INTERVAL = 0.5  # sec
     PUB_INTERVAL = 10.0  # sec
     REFRESH_INTERVAL = 5.0  # sec
 
-    MAX_AGE = 10
+    MAX_AGE = 20
 
-    def __init__(self, ip, dst, debug=False):
+    def __init__(self, ip: str, dst: str, debug=False):
         """constructor
 
         Parameters
@@ -51,7 +54,7 @@ class ListIPsApp:
         self._ip = ip
         self._dst = dst
 
-        # self._obj = ListIPs(self._opt, debug=self._dbg)
+        self._info = []
 
         self._nmap_loop_active = False
         self._nmap_th = threading.Thread(target=self.loop_nmap,
@@ -74,7 +77,8 @@ class ListIPsApp:
         while True:
             time.sleep(self.PUB_INTERVAL)
 
-            hostdata = self.parse_xml(self.OUT_FILE)
+            self._info = self.load_info(self.INFO_FILE)
+            hostdata = self.parse_xml(self.OUT_FILE, self._info)
 
             for h in hostdata:
                 hostage[h] = self.MAX_AGE + 1
@@ -94,8 +98,8 @@ class ListIPsApp:
 
                 count += 1
 
-                outstr += "%3d [%02d] %-15s %-18s %s (%s)\n" % (
-                    count, hostage[h], h[0], h[1], h[2], h[3])
+                outstr += "%3d [%02d] %-15s %-18s %s:%s %s\n" % (
+                    count, hostage[h], h[0], h[1], h[2], h[3], h[4])
 
             now_str = datetime.datetime.now().strftime('%Y-%m-%d(%a) %H:%M:%S')
             self.__log.debug('now_str=%a', now_str)
@@ -130,21 +134,50 @@ class ListIPsApp:
 
         self.__log.debug('done')
 
-    def parse_xml(self, xml_file):
+    def load_info(self, info_file: str):
+        """ load_info
+
+        Parameters
+        ----------
+        info_file: str
+            Information file name (CSV)
+        """
+
+        csv_data = []
+        with open(self.INFO_FILE) as fp:
+            csv_reader = csv.reader(fp)
+            csv_data = [row for row in csv_reader]
+
+        self.__log.debug('csv_data=%s', csv_data)
+
+        return csv_data
+
+    def parse_xml(self, xml_file: str, info: list):
         """ parse_xml
 
         Parameters
         ----------
         xml_file: str
             XML file
+        info: list
+            information data list
         """
 
         hostdata = []
 
-        with open(xml_file, encoding='utf-8') as fp:
-            xml_data = fp.read()
+        try:
+            with open(xml_file, encoding='utf-8') as fp:
+                xml_data = fp.read()
 
-        dict_data = xmltodict.parse(xml_data)
+        except Exception as e:
+            self.__log.error('%s:%s', type(e).__name__, e)
+            return {}
+
+        try:
+            dict_data = xmltodict.parse(xml_data)
+        except Exception as e:
+            self.__log.error('%s:%s', type(e).__name__, e)
+            return {}
         self.__log.debug(dict_data)
 
         for d in dict_data['nmaprun']['host']:
@@ -155,6 +188,7 @@ class ListIPsApp:
             mac = ''
             hostname = ''
             vendor = ''
+            info = ''
 
             for a in d['address']:
                 addr = a['@addr']
@@ -167,6 +201,10 @@ class ListIPsApp:
                 if addrtype == 'mac':
                     mac = addr
 
+                    for i in self._info:
+                        if mac == i[0]:
+                            info = i[1]
+
                 if '@vendor' in a:
                     vendor = a['@vendor']
 
@@ -176,11 +214,11 @@ class ListIPsApp:
             if d['hostnames'] is not None:
                 hostname = d['hostnames']['hostname']['@name']
 
-            hostdata.append((ip, mac, vendor, hostname))
+            hostdata.append((ip, mac, vendor, hostname, info))
 
         return hostdata
 
-    def loop_nmap(self, ip, out_file, interval):
+    def loop_nmap(self, ip: str, out_file: str, interval: int):
         """ loop_nmap
 
         Parameters
@@ -205,7 +243,7 @@ class ListIPsApp:
         self._nmap_loop_active = False
         self._nmap_th.join()
 
-    def exec_nmap(self, ip, out_file):
+    def exec_nmap(self, ip: str, out_file: str):
         """ exec_nmap
 
         Parameters
@@ -236,7 +274,6 @@ class ListIPsApp:
         self.__log.debug('done')
 
 
-import click
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
