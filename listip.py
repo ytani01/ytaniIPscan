@@ -98,8 +98,12 @@ class ListIPsApp:
 
                 count += 1
 
-                outstr += "%3d [%02d] %-15s %-18s %s:%s %s\n" % (
-                    count, hostage[h], h[0], h[1], h[2], h[3], h[4])
+                if len(h[2] + h[3]) > 0:
+                    outstr += "%3d [%02d] %-15s %-18s %s (%s:%s)\n" % (
+                        count, hostage[h], h[0], h[1], h[4], h[2], h[3])
+                else:
+                    outstr += "%3d [%02d] %-15s %-18s %s\n" % (
+                        count, hostage[h], h[0], h[1], h[4])
 
             now_str = datetime.datetime.now().strftime('%Y-%m-%d(%a) %H:%M:%S')
             self.__log.debug('now_str=%a', now_str)
@@ -179,6 +183,9 @@ class ListIPsApp:
             self.__log.error('%s:%s', type(e).__name__, e)
             return {}
         self.__log.debug(dict_data)
+
+        if len(dict_data) <= 0:
+            return {}
 
         for d in dict_data['nmaprun']['host']:
             if type(d['address']) != list:
