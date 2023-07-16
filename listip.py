@@ -5,9 +5,9 @@
 """
 
 """
+import os
 import time
 import datetime
-import threading
 import click
 import subprocess
 import csv
@@ -19,6 +19,10 @@ __author__ = 'Yoichi Tanibayashi'
 __date__ = '2023'
 
 
+__MYNAME__ = 'listip'
+__PID__ = os.getpid()
+
+
 class ListIPsApp:
     """ ListIPsApp
 
@@ -27,9 +31,9 @@ class ListIPsApp:
     """
     __log = get_logger(__name__, False)
 
-    OUT_FILE = '/tmp/listip.out'
-    WORK_FILE = OUT_FILE + '.work'
-    HTML_FILE = '/tmp/listip.html'
+    XML_FILE = '/tmp/%s-%d.out' % (__MYNAME__, __PID__)
+    WORK_FILE = XML_FILE + '.work'
+    HTML_FILE = '/tmp/%s-%d.html' % (__MYNAME__, __PID__)
     INFO_FILE = '/home/ytani/etc/info.csv'
 
     NMAP_INTERVAL = 0.5  # sec
@@ -38,7 +42,7 @@ class ListIPsApp:
 
     MAX_AGE = 20
 
-    def __init__(self, ip: str, dst: str, debug=False):
+    def __init__(self, ip: str, dst: str = None, debug=False):
         """constructor
 
         Parameters
@@ -54,31 +58,26 @@ class ListIPsApp:
         self._ip = ip
         self._dst = dst
 
-        self._info = []
-
-        self._nmap_loop_active = False
-        self._nmap_th = threading.Thread(target=self.loop_nmap,
-                                         args=(self._ip,
-                                               self.OUT_FILE,
-                                               self.NMAP_INTERVAL))
-        self._nmap_th.daemon = True
-
     def main(self):
         """ main routine
         """
         self.__log.debug('')
 
-        self._nmap_loop_active = True
-        self._nmap_th.start()
-
         hostage = {}
 
-        time.sleep(self.PUB_INTERVAL)
         while True:
             time.sleep(self.PUB_INTERVAL)
 
-            self._info = self.load_info(self.INFO_FILE)
-            hostdata = self.parse_xml(self.OUT_FILE, self._info)
+            # load INFO_FILE
+            info_list = self.load_info(self.INFO_FILE)
+
+            # exec nmap
+            self.exec_nmap(self._ip, self.XML_FILE)
+
+            #
+            # parse nmap XML
+            #
+            hostdata = self.parse_xml(self.XML_FILE, info_list)
 
             for h in hostdata:
                 hostage[h] = self.MAX_AGE + 1
@@ -105,36 +104,13 @@ class ListIPsApp:
                     outstr += "%3d [%02d] %-15s %-18s %s\n" % (
                         count, hostage[h], h[0], h[1], h[4])
 
-            now_str = datetime.datetime.now().strftime('%Y-%m-%d(%a) %H:%M:%S')
-            self.__log.debug('now_str=%a', now_str)
-
-#            outstr = "# %s, count = %d\n" % (
-#                datetime.datetime.now(), count) + outstr
+            self.make_html(count, outstr, self.HTML_FILE)
 
             #
-            # HTML
+            # send HTML file to destination
             #
-            html_str = '''<!DOCTYPE HTML>
-<html>
-  <head>
-    <meta http-equiv="refresh" content="%d">
-  </head>
-  <body>
-    <h3 style="text-align: left;">%s</h3>
-    <blockquote>
-    <h1 style="text-align: left;">%s</h1>
-    </blockquote>
-    <hr />
-    <pre>%s</pre>
-    <hr />
-  </body>
-</html>
-''' % (self.REFRESH_INTERVAL, now_str, count, outstr)
-
-            with open(self.HTML_FILE, mode='w') as fp:
-                fp.write(html_str)
-
-            subprocess.run(['scp', self.HTML_FILE, self._dst])
+            if self._dst is not None:
+                subprocess.run(['scp', self.HTML_FILE, self._dst])
 
         self.__log.debug('done')
 
@@ -147,46 +123,82 @@ class ListIPsApp:
             Information file name (CSV)
         """
 
-        csv_data = []
+        info_list: list = []
         with open(self.INFO_FILE) as fp:
             csv_reader = csv.reader(fp)
-            csv_data = [row for row in csv_reader]
+            info_list = [row for row in csv_reader]
 
-        self.__log.debug('csv_data=%s', csv_data)
+        self.__log.debug('info_list=%s', info_list)
 
-        return csv_data
+        return info_list
 
-    def parse_xml(self, xml_file: str, info: list):
+    def exec_nmap(self, ip: str, out_file: str):
+        """ exec_nmap
+
+        Parameters
+        ----------
+        ip: str
+            IP address e.g. '192.168.0.0/24'
+        out_file: str
+            output file name (XML file)
+        """
+        self.__log.debug('ip=%s, out_file=%s', ip, out_file)
+
+        work_file = out_file + '.work'
+
+        # run nmap
+        cmdline = ['sudo', 'nmap', '-sP', '-oX', work_file, ip]
+        subprocess.run(cmdline)
+
+        # mv work_file to out_file
+        cmdline = ['sudo', 'mv', '-f', work_file, out_file]
+        subprocess.run(cmdline)
+
+    def parse_xml(self, xml_file: str, info_list: list):
         """ parse_xml
 
         Parameters
         ----------
         xml_file: str
             XML file
-        info: list
+        info_list: list
             information data list
+
+        Returns
+        -------
+        hostdata: list
+           ip, mac, name, etc..
         """
 
-        hostdata = []
+        hostdata: list = []
 
+        #
+        # read XML file
+        #
         try:
             with open(xml_file, encoding='utf-8') as fp:
                 xml_data = fp.read()
 
         except Exception as e:
             self.__log.error('%s:%s', type(e).__name__, e)
-            return {}
+            return []
 
+        #
+        # parse XML
+        #
         try:
             dict_data = xmltodict.parse(xml_data)
         except Exception as e:
             self.__log.error('%s:%s', type(e).__name__, e)
-            return {}
+            return []
         self.__log.debug(dict_data)
 
         if len(dict_data) <= 0:
-            return {}
+            return []
 
+        #
+        # make host list
+        #
         for d in dict_data['nmaprun']['host']:
             if type(d['address']) != list:
                 continue
@@ -208,7 +220,7 @@ class ListIPsApp:
                 if addrtype == 'mac':
                     mac = addr
 
-                    for i in self._info:
+                    for i in info_list:
                         if mac == i[0]:
                             info = i[1]
 
@@ -225,70 +237,51 @@ class ListIPsApp:
 
         return hostdata
 
-    def loop_nmap(self, ip: str, out_file: str, interval: int):
-        """ loop_nmap
+    def make_html(self, count: int, out_str: str, html_file: str ):
+        """ make_html
 
         Parameters
         ----------
-        ip: str
-            IP address e.g. '192.168.0.0/24'
-        dst: str
-            scp destination, e.g. 'host:dir/file'
-        interval: int
-            interval sec
+        count: int
+        out_str: str
+        hotml_file: str
         """
 
-        while self._nmap_loop_active:
-            self.exec_nmap(ip, out_file)
-            time.sleep(interval)
+        now_str = datetime.datetime.now().strftime('%Y-%m-%d(%a) %H:%M:%S')
+        self.__log.debug('now_str=%a', now_str)
 
-        self.__log.info('done')
+        html_str = '''<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta http-equiv="refresh" content="%d">
+  </head>
+  <body>
+    <h3 style="text-align: left;">%s</h3>
+    <blockquote>
+    <h1 style="text-align: left;">%s</h1>
+    </blockquote>
+    <hr />
+    <pre>%s</pre>
+    <hr />
+  </body>
+</html>
+''' % (self.REFRESH_INTERVAL, now_str, count, out_str)
 
-    def end_nmap_loop(self):
-        """ end_nmap_loop
-        """
-        self._nmap_loop_active = False
-        self._nmap_th.join()
-
-    def exec_nmap(self, ip: str, out_file: str):
-        """ exec_nmap
-
-        Parameters
-        ----------
-        ip: str
-            IP address e.g. '192.168.0.0/24'
-        out_file: str
-            output file name
-        """
-        self.__log.debug('ip=%s, out_file=%s', ip, out_file)
-
-        work_file = out_file + '.work'
-
-        # run nmap
-        cmdline = ['sudo', 'nmap', '-sP', '-oX', work_file, ip]
-        subprocess.run(cmdline)
-
-        # mv work_file to out_file
-        cmdline = ['sudo', 'mv', '-f', work_file, out_file]
-        subprocess.run(cmdline)
+        with open(html_file, mode='w') as fp:
+            fp.write(html_str)
 
     def end(self):
         """ Call at the end of program.
         """
-        self.__log.debug('doing ..')
-        self.end_nmap_loop()
-        # self._obj.end()
         self.__log.debug('done')
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
-@click.command(context_settings=CONTEXT_SETTINGS, help='''
-List IPs
-''')
+@click.command(context_settings=CONTEXT_SETTINGS, help='List IPs')
 @click.argument('ip', type=str, nargs=1)
-@click.argument('dst', type=str, nargs=1)
+@click.option('--dst', '-s', 'dst', type=str, help='destination host:path')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
 def main(ip, dst, debug):
