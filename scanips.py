@@ -96,7 +96,7 @@ class ListIPsApp:
                 count += 1
 
                 if len(h[2] + h[3]) > 0:
-                    outstr += "%3d [%02d] %-15s %-18s %s (%s:%s)\n" % (
+                    outstr += "%3d [%02d] %-15s %-18s %s (%s : %s)\n" % (
                         count, hostage[h], h[0], h[1], h[4], h[2], h[3])
                 else:
                     outstr += "%3d [%02d] %-15s %-18s %s\n" % (
