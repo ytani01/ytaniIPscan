@@ -236,7 +236,7 @@ class ListIPsApp:
             if d['hostnames'] is not None:
                 hostname = d['hostnames']['hostname']['@name']
 
-            hostdata.append((ip, mac, vendor, hostname, info))
+            hostdata.append((ip, mac, hostname, vendor, info))
 
         return hostdata
 
