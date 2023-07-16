@@ -34,9 +34,9 @@ class ListIPsApp:
     XML_FILE = '/tmp/%s-%d.out' % (__MYNAME__, __PID__)
     WORK_FILE = XML_FILE + '.work'
     HTML_FILE = '/tmp/%s-%d.html' % (__MYNAME__, __PID__)
+
     INFO_FILE = '/home/ytani/etc/info.csv'
 
-    NMAP_INTERVAL = 0.5  # sec
     PUB_INTERVAL = 10.0  # sec
     REFRESH_INTERVAL = 5.0  # sec
 
@@ -66,8 +66,6 @@ class ListIPsApp:
         hostage = {}
 
         while True:
-            time.sleep(self.PUB_INTERVAL)
-
             # load INFO_FILE
             info_list = self.load_info(self.INFO_FILE)
 
@@ -112,6 +110,10 @@ class ListIPsApp:
             if self._dst is not None:
                 subprocess.run(['scp', self.HTML_FILE, self._dst])
 
+            #
+                #
+            time.sleep(self.PUB_INTERVAL)
+
         self.__log.debug('done')
 
     def load_info(self, info_file: str):
@@ -148,7 +150,8 @@ class ListIPsApp:
 
         # run nmap
         cmdline = ['sudo', 'nmap', '-sP', '-oX', work_file, ip]
-        subprocess.run(cmdline)
+        out_str = subprocess.run(cmdline, capture_output=True, text=True).stdout
+        self.__log.debug('out_str=\n%s', out_str)
 
         # mv work_file to out_file
         cmdline = ['sudo', 'mv', '-f', work_file, out_file]
@@ -191,7 +194,7 @@ class ListIPsApp:
         except Exception as e:
             self.__log.error('%s:%s', type(e).__name__, e)
             return []
-        self.__log.debug(dict_data)
+        self.__log.debug('dict_data=%s', dict_data)
 
         if len(dict_data) <= 0:
             return []
@@ -273,6 +276,15 @@ class ListIPsApp:
     def end(self):
         """ Call at the end of program.
         """
+        self.__log.debug('')
+
+        #
+        # remove tmp files
+        #
+        cmdline = ['sudo', 'rm', '-fv',
+                   self.XML_FILE, self.WORK_FILE, self.HTML_FILE]
+        subprocess.run(cmdline)
+
         self.__log.debug('done')
 
 
