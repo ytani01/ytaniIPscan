@@ -16,9 +16,5 @@ pip install -r requirements.txt
 ## How to use
 
 ```
-nmap-loop.sh 192.168.0.0/24
-```
-
-```
-loadxml.py
+scanips.py 192.168.0.0/24 -s foo.server:foo_dir/foo.html
 ```
