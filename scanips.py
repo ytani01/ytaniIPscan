@@ -38,7 +38,7 @@ class ScanIPsApp:
     INFO_FILE = '/home/ytani/etc/info.csv'
 
     PUB_INTERVAL = 10.0  # sec
-    REFRESH_INTERVAL = 5.0  # sec
+    REFRESH_INTERVAL = 10.0  # sec
 
     MAX_AGE = 20
 
