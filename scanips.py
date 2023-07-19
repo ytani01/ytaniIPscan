@@ -19,12 +19,12 @@ __author__ = 'Yoichi Tanibayashi'
 __date__ = '2023'
 
 
-__MYNAME__ = 'listip'
+__MYNAME__ = 'scanips'
 __PID__ = os.getpid()
 
 
-class ListIPsApp:
-    """ ListIPsApp
+class ScanIPsApp:
+    """ ScanIPsApp
 
     Attributes
     ----------
@@ -85,6 +85,8 @@ class ListIPsApp:
             #
             outstr = ''
             count = 0
+            human_list = []
+
             for h in hostage.keys():
 
                 hostage[h] -= 1
@@ -95,14 +97,32 @@ class ListIPsApp:
 
                 count += 1
 
+                h1 = list(h)
+
+                #
+                # Human ?
+                #
+                if not h[4].startswith('#'):
+                    name = h[4].split(' ')[0]
+                    if len(name) == 0:
+                        name = 'human?(%d)' % (count)
+                        h1[4] = name + h[4]
+
+                    human_list.append(name)
+
+                #
+                # make outstr
+                #
                 if len(h[2] + h[3]) > 0:
                     outstr += "%3d [%02d] %-15s %-18s %s (%s : %s)\n" % (
-                        count, hostage[h], h[0], h[1], h[4], h[2], h[3])
+                        count, hostage[h], h[0], h[1], h1[4], h[2], h[3])
                 else:
                     outstr += "%3d [%02d] %-15s %-18s %s\n" % (
-                        count, hostage[h], h[0], h[1], h[4])
+                        count, hostage[h], h[0], h[1], h1[4])
 
-            self.make_html(count, outstr, self.HTML_FILE)
+            human_list = list(set(human_list))
+
+            self.make_html(count, human_list, outstr, self.HTML_FILE)
 
             #
             # send HTML file to destination
@@ -110,8 +130,12 @@ class ListIPsApp:
             if self._dst is not None:
                 subprocess.run(['scp', self.HTML_FILE, self._dst])
 
+            self.__log.debug('count = %d, human_list = %s',
+                             count, human_list)
+
             #
-                #
+            # Sleep
+            #
             time.sleep(self.PUB_INTERVAL)
 
         self.__log.debug('done')
@@ -150,7 +174,8 @@ class ListIPsApp:
 
         # run nmap
         cmdline = ['sudo', 'nmap', '-sP', '-oX', work_file, ip]
-        out_str = subprocess.run(cmdline, capture_output=True, text=True).stdout
+        out_str = subprocess.run(cmdline,
+                                 capture_output=True, text=True).stdout
         self.__log.debug('out_str=\n%s', out_str)
 
         # mv work_file to out_file
@@ -240,12 +265,14 @@ class ListIPsApp:
 
         return hostdata
 
-    def make_html(self, count: int, out_str: str, html_file: str ):
+    def make_html(self, count: int, human_list: list,
+                  out_str: str, html_file: str ):
         """ make_html
 
         Parameters
         ----------
         count: int
+        human_list: list
         out_str: str
         hotml_file: str
         """
@@ -261,14 +288,15 @@ class ListIPsApp:
   <body>
     <h3 style="text-align: left;">%s</h3>
     <blockquote>
-    <h1 style="text-align: left;">%s</h1>
+    <h1 style="text-align: left;">up to %d peaple</h1>
     </blockquote>
     <hr />
     <pre>%s</pre>
     <hr />
+    <div style="text-align: right; font-size: small;">by ytaniIPscan</div>
   </body>
 </html>
-''' % (self.REFRESH_INTERVAL, now_str, count, out_str)
+''' % (self.REFRESH_INTERVAL, now_str, len(human_list), out_str)
 
         with open(html_file, mode='w') as fp:
             fp.write(html_str)
@@ -302,7 +330,7 @@ def main(ip, dst, debug):
     __log = get_logger(__name__, debug)
     __log.debug('ip=%s, dst=%s', ip, dst)
 
-    app = ListIPsApp(ip, dst, debug=debug)
+    app = ScanIPsApp(ip, dst, debug=debug)
     try:
         app.main()
     finally:
