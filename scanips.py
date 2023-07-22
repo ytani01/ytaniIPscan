@@ -12,6 +12,7 @@ import click
 import subprocess
 import csv
 import xmltodict
+import netifaces
 from my_logger import get_logger
 
 
@@ -58,12 +59,15 @@ class ScanIPsApp:
         self._ip = ip
         self._dst = dst
 
+        self._my_ipaddr = self.get_ipaddr()
+        self.__log.debug('my_ipaddr=%s', self._my_ipaddr)
+
     def main(self):
         """ main routine
         """
         self.__log.debug('')
 
-        hostage = {}
+        host_countdown = {}
 
         while True:
             # load INFO_FILE
@@ -78,7 +82,7 @@ class ScanIPsApp:
             hostdata = self.parse_xml(self.XML_FILE, info_list)
 
             for h in hostdata:
-                hostage[h] = self.MAX_AGE + 1
+                host_countdown[h] = self.MAX_AGE + 1
 
             #
             # IP list
@@ -87,12 +91,14 @@ class ScanIPsApp:
             count = 0
             human_list = []
 
-            for h in hostage.keys():
+            for h in host_countdown.keys():
 
-                hostage[h] -= 1
+                self.__log.debug('h=%s', h)
 
-                if hostage[h] <= 0:
-                    hostage[h] = 0
+                host_countdown[h] -= 1
+
+                if host_countdown[h] <= 0:
+                    host_countdown[h] = 0
                     continue
 
                 count += 1
@@ -105,7 +111,7 @@ class ScanIPsApp:
                 if not h[4].startswith('#'):
                     name = h[4].split(' ')[0]
                     if len(name) == 0:
-                        name = 'human?(%d)' % (count)
+                        name = 'who? %d' % (count)
                         h1[4] = name + h[4]
 
                     human_list.append(name)
@@ -115,10 +121,11 @@ class ScanIPsApp:
                 #
                 if len(h[2] + h[3]) > 0:
                     outstr += "%3d [%02d] %-15s %-18s %s (%s : %s)\n" % (
-                        count, hostage[h], h[0], h[1], h1[4], h[2], h[3])
+                        count,
+                        host_countdown[h], h[0], h[1], h1[4], h[2], h[3])
                 else:
                     outstr += "%3d [%02d] %-15s %-18s %s\n" % (
-                        count, hostage[h], h[0], h[1], h1[4])
+                        count, host_countdown[h], h[0], h[1], h1[4])
 
             human_list = list(set(human_list))
 
@@ -140,7 +147,25 @@ class ScanIPsApp:
 
         self.__log.debug('done')
 
-    def load_info(self, info_file: str):
+    def get_ipaddr(self) -> str:
+        """ get_ipaddr()
+        """
+
+        for if_name in netifaces.interfaces():
+
+            if if_name == 'lo':
+                continue
+
+            try:
+                ips = netifaces.ifaddresses(if_name)[netifaces.AF_INET]
+            except KeyError:
+                continue
+
+            return ips[0]['addr']
+
+        return ''
+
+    def load_info(self, info_file: str) -> list:
         """ load_info
 
         Parameters
@@ -293,10 +318,12 @@ class ScanIPsApp:
     <hr />
     <pre>%s</pre>
     <hr />
+    <div style="font-size: small;">%s</div>
     <div style="text-align: right; font-size: small;">by ytaniIPscan</div>
   </body>
 </html>
-''' % (self.REFRESH_INTERVAL, now_str, len(human_list), out_str)
+''' % (self.REFRESH_INTERVAL, now_str, len(human_list), out_str,
+       self._my_ipaddr)
 
         with open(html_file, mode='w') as fp:
             fp.write(html_str)
