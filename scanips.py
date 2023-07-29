@@ -349,21 +349,19 @@ class ScanIPsApp:
         self.__log.debug('done')
 
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-
-
-@click.command(context_settings=CONTEXT_SETTINGS, help='List IPs')
-@click.argument('ip', type=str, nargs=1)
-@click.option('--dst', '-s', 'dst', type=str, help='destination host:path')
+@click.command(context_settings=dict(help_option_names=['-h', '--help']),
+               help='Scan IPs')
+@click.argument('ip', type=str)
+@click.argument('scp_dst', type=str)
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
-def main(ip, dst, debug):
+def main(ip, scp_dst, debug):
     """起動用メイン関数
     """
     __log = get_logger(__name__, debug)
-    __log.debug('ip=%s, dst=%s', ip, dst)
+    __log.debug('ip=%s, scp_dst=%s', ip, scp_dst)
 
-    app = ScanIPsApp(ip, dst, debug=debug)
+    app = ScanIPsApp(ip, scp_dst, debug=debug)
     try:
         app.main()
     finally:

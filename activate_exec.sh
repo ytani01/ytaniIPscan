@@ -11,6 +11,8 @@ shift
 CMD_LINE=$*
 echo "CMD_LINE=$CMD_LINE"
 
+echo
+
 . $VENV_DIR/bin/activate
 
 exec $CMD_LINE
