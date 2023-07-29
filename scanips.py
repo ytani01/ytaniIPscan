@@ -5,6 +5,7 @@
 """
 
 """
+from typing import Optional
 import os
 import time
 import datetime
@@ -36,14 +37,18 @@ class ScanIPsApp:
     WORK_FILE = XML_FILE + '.work'
     HTML_FILE = '/tmp/%s-%d.html' % (__MYNAME__, __PID__)
 
-    INFO_FILE = '/home/ytani/etc/info.csv'
+    INFO_DIR = ['.',
+                os.environ['HOME'],
+                os.environ['HOME'] + '/etc',
+                '/etc', '/usr/local/etc']
+    INFO_FILENAME = 'scanips_info.csv'
 
     PUB_INTERVAL = 10.0  # sec
     REFRESH_INTERVAL = 10.0  # sec
 
     MAX_AGE = 20
 
-    def __init__(self, ip: str, dst: str = None, debug=False):
+    def __init__(self, ip: str, dst: Optional[str] = None, debug=False):
         """constructor
 
         Parameters
@@ -71,7 +76,7 @@ class ScanIPsApp:
 
         while True:
             # load INFO_FILE
-            info_list = self.load_info(self.INFO_FILE)
+            info_list = self.load_info()
 
             # exec nmap
             self.exec_nmap(self._ip, self.XML_FILE)
@@ -135,7 +140,14 @@ class ScanIPsApp:
             # send HTML file to destination
             #
             if self._dst is not None:
-                subprocess.run(['scp', self.HTML_FILE, self._dst])
+                cmdline = ['scp', self.HTML_FILE, self._dst]
+                self.__log.debug('cmdline=%a', ' '.join(cmdline))
+
+                cmd_ret = subprocess.run(cmdline,
+                                         capture_output=True, text=True)
+                self.__log.debug('  stdout=%a', cmd_ret.stdout)
+                self.__log.debug('  stderr=%a', cmd_ret.stderr)
+                self.__log.debug('  returncode=%d', cmd_ret.returncode)
 
             self.__log.debug('count = %d, human_list = %s',
                              count, human_list)
@@ -147,8 +159,32 @@ class ScanIPsApp:
 
         self.__log.debug('done')
 
-    def get_ipaddr(self) -> str:
+    def search_info_file(self) -> Optional[str]:
+        """ search_infofile()
+
+        Returns
+        -------
+        info_file: str | None
+        """
+
+        for d in self.INFO_DIR:
+            info_file = d + '/' + self.INFO_FILENAME
+            try:
+                fp = open(info_file)
+            except Exception:
+                continue
+
+            fp.close()
+            return info_file
+
+        return None
+
+    def get_ipaddr(self) -> Optional[str]:
         """ get_ipaddr()
+
+        Returns
+        -------
+        ipaddr: str | None
         """
 
         for if_name in netifaces.interfaces():
@@ -163,21 +199,31 @@ class ScanIPsApp:
 
             return ips[0]['addr']
 
-        return ''
+        return None
 
-    def load_info(self, info_file: str) -> list:
+    def load_info(self) -> list:
         """ load_info
 
-        Parameters
-        ----------
-        info_file: str
-            Information file name (CSV)
+        Returns
+        -------
+        info_list: list
         """
 
         info_list: list = []
-        with open(self.INFO_FILE) as fp:
-            csv_reader = csv.reader(fp)
-            info_list = [row for row in csv_reader]
+
+        info_file: Optional[str] = self.search_info_file()
+        self.__log.debug('info_file=%s', info_file)
+
+        if info_file is None:
+            return []
+
+        try:
+            with open(info_file) as fp:
+                csv_reader = csv.reader(fp)
+                info_list = [row for row in csv_reader]
+        except Exception as e:
+            self.__log.error('%s:%s', type(e).__name__, e)
+            return []
 
         self.__log.debug('info_list=%s', info_list)
 
@@ -199,13 +245,18 @@ class ScanIPsApp:
 
         # run nmap
         cmdline = ['sudo', 'nmap', '-sP', '-oX', work_file, ip]
-        out_str = subprocess.run(cmdline,
-                                 capture_output=True, text=True).stdout
-        self.__log.debug('out_str=\n%s', out_str)
+        self.__log.debug('cmdline=%a', ' '.join(cmdline))
+
+        cmd_ret = subprocess.run(cmdline,
+                                 capture_output=True, text=True)
+        self.__log.debug('  stdout=\n%s', cmd_ret.stdout)
 
         # mv work_file to out_file
         cmdline = ['sudo', 'mv', '-f', work_file, out_file]
-        subprocess.run(cmdline)
+        self.__log.debug('cmdline=%a', ' '.join(cmdline))
+
+        cmd_ret = subprocess.run(cmdline)
+        self.__log.debug('  returncode=%d', cmd_ret.returncode)
 
     def parse_xml(self, xml_file: str, info_list: list):
         """ parse_xml
