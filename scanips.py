@@ -46,9 +46,10 @@ class ScanIPsApp:
     PUB_INTERVAL = 10.0  # sec
     REFRESH_INTERVAL = 10.0  # sec
 
-    MAX_AGE = 20
+    COUNTDOWN = 20
 
-    def __init__(self, ip: str, dst: Optional[str] = None, debug=False):
+    def __init__(self, ip: str, dst: Optional[str] = None,
+                 countdown: int = COUNTDOWN, debug: bool = False):
         """constructor
 
         Parameters
@@ -57,12 +58,14 @@ class ScanIPsApp:
             IP address e.g. '192.168.0.0/24'
         dst: str
             scp destination, e.g. host:dir/file
+        countdown: int
         """
         self._dbg = debug
         __class__.__log = get_logger(__class__.__name__, self._dbg)
 
         self._ip = ip
         self._dst = dst
+        self._countdown = countdown
 
         self._my_ipaddr = self.get_ipaddr()
         self.__log.debug('my_ipaddr=%s', self._my_ipaddr)
@@ -87,7 +90,7 @@ class ScanIPsApp:
             hostdata = self.parse_xml(self.XML_FILE, info_list)
 
             for h in hostdata:
-                host_countdown[h] = self.MAX_AGE + 1
+                host_countdown[h] = self._countdown + 1
 
             #
             # IP list
@@ -149,7 +152,7 @@ class ScanIPsApp:
                 self.__log.debug('  stderr=%a', cmd_ret.stderr)
                 self.__log.debug('  returncode=%d', cmd_ret.returncode)
 
-            self.__log.debug('count = %d, human_list = %s',
+            self.__log.info('count = %d, human_list = %s',
                              count, human_list)
 
             #
@@ -362,6 +365,11 @@ class ScanIPsApp:
         now_str = datetime.datetime.now().strftime('%Y-%m-%d(%a) %H:%M:%S')
         self.__log.debug('now_str=%a', now_str)
 
+        people_max = len(human_list)
+        people_min = 0
+        if people_max > 0:
+            people_min = max(int(people_max / 3), 1)
+
         html_str = '''<!DOCTYPE HTML>
 <html>
   <head>
@@ -370,7 +378,7 @@ class ScanIPsApp:
   <body>
     <h3 style="text-align: left;">%s</h3>
     <blockquote>
-    <h1 style="text-align: left;">up to %d peaple</h1>
+    <h1 style="text-align: left;">%d to %d people</h1>
     </blockquote>
     <hr />
     <pre>%s</pre>
@@ -379,8 +387,8 @@ class ScanIPsApp:
     <div style="text-align: right; font-size: small;">by ytaniIPscan</div>
   </body>
 </html>
-''' % (self.REFRESH_INTERVAL, now_str, len(human_list), out_str,
-       self._my_ipaddr)
+''' % (self.REFRESH_INTERVAL, now_str,
+       people_min, people_max, out_str, self._my_ipaddr)
 
         with open(html_file, mode='w') as fp:
             fp.write(html_str)
@@ -404,15 +412,19 @@ class ScanIPsApp:
                help='Scan IPs')
 @click.argument('ip', type=str)
 @click.argument('scp_dst', type=str)
+@click.option('--countdown', '-c', 'countdown', type=int,
+              default=ScanIPsApp.COUNTDOWN,
+              help='countdown')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
-def main(ip, scp_dst, debug):
+def main(ip, scp_dst, countdown, debug):
     """起動用メイン関数
     """
     __log = get_logger(__name__, debug)
     __log.debug('ip=%s, scp_dst=%s', ip, scp_dst)
+    __log.debug('countdown=%d', countdown)
 
-    app = ScanIPsApp(ip, scp_dst, debug=debug)
+    app = ScanIPsApp(ip, scp_dst, countdown, debug=debug)
     try:
         app.main()
     finally:
