@@ -120,12 +120,12 @@ class ScanIPsApp:
                 # make outstr
                 #
                 if len(h[2] + h[3]) > 0:
-                    outstr += "%3d [%02d] %-15s %-18s %s (%s : %s)\n" % (
+                    outstr += "%3d %-15s %-17s [%02d] %s (%s : %s)\n" % (
                         count,
-                        host_countdown[h], h[0], h[1], h1[4], h[2], h[3])
+                        h[0], h[1], host_countdown[h], h1[4], h[2], h[3])
                 else:
-                    outstr += "%3d [%02d] %-15s %-18s %s\n" % (
-                        count, host_countdown[h], h[0], h[1], h1[4])
+                    outstr += "%3d %-15s %-17s [%02d] %s\n" % (
+                        count, h[0], h[1], host_countdown[h], h1[4])
 
             human_list = list(set(human_list))
 
@@ -249,10 +249,16 @@ class ScanIPsApp:
         if len(dict_data) <= 0:
             return []
 
+        try:
+            host_list: list = dict_data['nmaprun']['host']
+        except KeyError as e:
+            self.__log.error('%s:%s', type(e).__name__, e)
+            return []
+
         #
         # make host list
         #
-        for d in dict_data['nmaprun']['host']:
+        for d in host_list:
             if type(d['address']) != list:
                 continue
 
