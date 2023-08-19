@@ -78,6 +78,10 @@ class ScanIPsApp:
         host_countdown = {}
 
         while True:
+            # get my IP address
+            self._my_ipaddr = self.get_ipaddr()
+            self.__log.debug('my_ipaddr=%s', self._my_ipaddr)
+            
             # load INFO_FILE
             info_list = self.load_info()
 
