@@ -37,10 +37,9 @@ class ScanIPsApp:
     WORK_FILE = XML_FILE + '.work'
     HTML_FILE = '/tmp/%s-%d.html' % (__MYNAME__, __PID__)
 
-    INFO_DIR = ['.',
-                os.environ['HOME'],
+    INFO_DIR = [os.environ['HOME'],
                 os.environ['HOME'] + '/etc',
-                '/etc', '/usr/local/etc']
+                '/usr/local/etc', '/etc', '.']
     INFO_FILENAME = 'scanips_info.csv'
 
     PUB_INTERVAL = 10.0  # sec
@@ -81,7 +80,7 @@ class ScanIPsApp:
             # get my IP address
             self._my_ipaddr = self.get_ipaddr()
             self.__log.debug('my_ipaddr=%s', self._my_ipaddr)
-            
+
             # load INFO_FILE
             info_list = self.load_info()
 
@@ -157,7 +156,7 @@ class ScanIPsApp:
                 self.__log.debug('  returncode=%d', cmd_ret.returncode)
 
             self.__log.info('count = %d, human_list = %s',
-                             count, human_list)
+                            count, human_list)
 
             #
             # Sleep
@@ -355,7 +354,7 @@ class ScanIPsApp:
         return hostdata
 
     def make_html(self, count: int, human_list: list,
-                  out_str: str, html_file: str ):
+                  out_str: str, html_file: str):
         """ make_html
 
         Parameters
@@ -391,8 +390,8 @@ class ScanIPsApp:
     <div style="text-align: right; font-size: small;">by ytaniIPscan</div>
   </body>
 </html>
-''' % (self.REFRESH_INTERVAL, now_str,
-       people_min, people_max, out_str, self._my_ipaddr)
+''' % (self.REFRESH_INTERVAL, now_str, people_min, people_max, out_str,
+       self._my_ipaddr)
 
         with open(html_file, mode='w') as fp:
             fp.write(html_str)
