@@ -4,7 +4,12 @@
 #
 
 VENV_DIR=$1
-echo "VENV_DIR=$VENV_DIR"
+if [ -n $VENV_DIR -a -d $VENV_DIR ]; then
+    echo "VENV_DIR=$VENV_DIR"
+else
+    echo "ERROR: VENV_DIR=$VENV_DIR"
+    exit
+fi
 
 shift
 
