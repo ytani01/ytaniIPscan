@@ -386,8 +386,7 @@ class ScanIPsApp:
     <hr />
     <pre>%s</pre>
     <hr />
-    <div style="font-size: small;">%s</div>
-    <div style="text-align: right; font-size: small;">by ytaniIPscan</div>
+    <div style="text-align: right; font-size: small;">by ytaniIPscan@%s</div>
   </body>
 </html>
 ''' % (self.REFRESH_INTERVAL, now_str, people_min, people_max, out_str,
