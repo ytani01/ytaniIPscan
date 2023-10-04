@@ -419,7 +419,8 @@ class ScanIPsApp:
                help='Scan IPs')
 @click.argument('ip', type=str)
 @click.argument('scp_dst', type=str)
-@click.option('--htmltitle', '-t', 'htmltitle', type=str, default='',
+@click.option('--htmltitle', '-t', 'htmltitle', type=str,
+              default=__MYNAME__,
               help='html title')
 @click.option('--countdown', '-c', 'countdown', type=int,
               default=ScanIPsApp.COUNTDOWN,
