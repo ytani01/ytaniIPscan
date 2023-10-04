@@ -48,7 +48,7 @@ class ScanIPsApp:
     COUNTDOWN = 20
 
     def __init__(self, ip: str, dst: Optional[str] = None,
-                 html_title: str = '',
+                 html_title: str = __MYNAME__,
                  countdown: int = COUNTDOWN, debug: bool = False):
         """constructor
 
@@ -384,10 +384,9 @@ class ScanIPsApp:
     <title>%s</title>
   </head>
   <body>
-    <h3 style="text-align: left;">%s</h3>
-    <blockquote>
-    <h1 style="text-align: left;">%d to %d people</h1>
-    </blockquote>
+    <h1 style="text-align: center;">%s</h1>
+    <div style="text-align: center;">%s</div>
+    <h2 style="text-align: center;">%d to %d people</h2>
     <hr />
     <pre>%s</pre>
     <hr />
@@ -395,7 +394,8 @@ class ScanIPsApp:
   </body>
 </html>
 ''' % (self.REFRESH_INTERVAL, self._html_title,
-       now_str, people_min, people_max, out_str, self._my_ipaddr)
+       self._html_title, now_str,
+       people_min, people_max, out_str, self._my_ipaddr)
 
         with open(html_file, mode='w') as fp:
             fp.write(html_str)
