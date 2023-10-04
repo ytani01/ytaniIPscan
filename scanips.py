@@ -48,6 +48,7 @@ class ScanIPsApp:
     COUNTDOWN = 20
 
     def __init__(self, ip: str, dst: Optional[str] = None,
+                 html_title: str = '',
                  countdown: int = COUNTDOWN, debug: bool = False):
         """constructor
 
@@ -57,6 +58,8 @@ class ScanIPsApp:
             IP address e.g. '192.168.0.0/24'
         dst: str
             scp destination, e.g. host:dir/file
+        html_title: str
+            title string of HTML file
         countdown: int
         """
         self._dbg = debug
@@ -64,6 +67,7 @@ class ScanIPsApp:
 
         self._ip = ip
         self._dst = dst
+        self._html_title = html_title
         self._countdown = countdown
 
         self._my_ipaddr = self.get_ipaddr()
@@ -377,6 +381,7 @@ class ScanIPsApp:
 <html>
   <head>
     <meta http-equiv="refresh" content="%d">
+    <title>%s</title>
   </head>
   <body>
     <h3 style="text-align: left;">%s</h3>
@@ -389,8 +394,8 @@ class ScanIPsApp:
     <div style="text-align: right; font-size: small;">by ytaniIPscan@%s</div>
   </body>
 </html>
-''' % (self.REFRESH_INTERVAL, now_str, people_min, people_max, out_str,
-       self._my_ipaddr)
+''' % (self.REFRESH_INTERVAL, self._html_title,
+       now_str, people_min, people_max, out_str, self._my_ipaddr)
 
         with open(html_file, mode='w') as fp:
             fp.write(html_str)
@@ -414,19 +419,22 @@ class ScanIPsApp:
                help='Scan IPs')
 @click.argument('ip', type=str)
 @click.argument('scp_dst', type=str)
+@click.option('--htmltitle', '-t', 'htmltitle', type=str, default='',
+              help='html title')
 @click.option('--countdown', '-c', 'countdown', type=int,
               default=ScanIPsApp.COUNTDOWN,
               help='countdown')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
-def main(ip, scp_dst, countdown, debug):
+def main(ip, scp_dst, htmltitle, countdown, debug):
     """起動用メイン関数
     """
     __log = get_logger(__name__, debug)
     __log.debug('ip=%s, scp_dst=%s', ip, scp_dst)
+    __log.debug('htmltitle=%s', htmltitle)
     __log.debug('countdown=%d', countdown)
 
-    app = ScanIPsApp(ip, scp_dst, countdown, debug=debug)
+    app = ScanIPsApp(ip, scp_dst, htmltitle, countdown, debug=debug)
     try:
         app.main()
     finally:
